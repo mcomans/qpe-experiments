@@ -22,6 +22,9 @@ from bigdl.nn.criterion import *
 from bigdl.optim.optimizer import *
 from bigdl.util.common import *
 
+import random
+
+random.seed(0)
 
 def build_model(class_num):
     model = Sequential()
@@ -51,6 +54,7 @@ if __name__ == "__main__":
     parser.add_option("-d", "--dataPath", dest="dataPath", default="/tmp/mnist")
     parser.add_option("-l", "--learningRate", dest="learningRate", default="0.01")
     parser.add_option("-k", "--learningrateDecay", dest="learningrateDecay", default="0.0002")
+    parser.add_option("-s", "--train-size", dest="trainingSetSize", default="1.0")
     (options, args) = parser.parse_args(sys.argv)
 
     sc = SparkContext(appName="lenet5", conf=create_spark_conf())
@@ -62,6 +66,7 @@ if __name__ == "__main__":
     print(learning_rate)
     if options.action == "train":
         (train_data, test_data) = preprocess_mnist(sc, options)
+        train_data = train_data.sample(False, float(options.trainingSetSize))
 
         optimizer = Optimizer(
             model=build_model(10),
@@ -73,14 +78,7 @@ if __name__ == "__main__":
         validate_optimizer(optimizer, test_data, options)
         trained_model = optimizer.optimize()
         parameters = trained_model.parameters()
-    elif options.action == "test":
-        # Load a pre-trained model and then validate it through top1 accuracy.
-        test_data = get_mnist(sc, "test", options.dataPath) \
-            .map(lambda rec_tuple: (normalizer(rec_tuple[0], mnist.TEST_MEAN, mnist.TEST_STD),
-                                    rec_tuple[1])) \
-            .map(lambda t: Sample.from_ndarray(t[0], t[1]))
-        model = Model.load(options.modelPath)
-        results = model.evaluate(test_data, options.batchSize, [Top1Accuracy()])
+        results = trained_model.evaluate(test_data, options.batchSize, [Top1Accuracy()])
         for result in results:
             print(result)
     sc.stop()

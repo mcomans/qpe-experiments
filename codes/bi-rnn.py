@@ -1,7 +1,3 @@
-import matplotlib
-matplotlib.use('Agg')
-
-
 import pandas
 import datetime as dt
 
@@ -13,8 +9,6 @@ from bigdl.dataset.transformer import *
 from bigdl.dataset import mnist
 from utils import get_mnist
 from pyspark import SparkContext
-from matplotlib.pyplot import imshow
-import matplotlib.pyplot as plt
 from optparse import OptionParser
 from bigdl.dataset import mnist
 from bigdl.dataset.transformer import *
@@ -68,6 +62,7 @@ if __name__ == "__main__":
     parser.add_option("-d", "--dataPath", dest="dataPath", default="/tmp/mnist")
     parser.add_option("-l", "--learningRate", dest="learningRate", default="0.01")
     parser.add_option("-k", "--learningrateDecay", dest="learningrateDecay", default="0.0002")
+    parser.add_option("-s", "--train-size", dest="trainingSetSize", default="1.0")
     (options, args) = parser.parse_args(sys.argv)
 
     sc = SparkContext(appName="birnn", conf=create_spark_conf())
@@ -90,7 +85,7 @@ if __name__ == "__main__":
         test_data = get_mnist(sc, "test", options.dataPath)\
         .map(lambda rec_tuple: (normalizer(rec_tuple[0], mnist.TEST_MEAN, mnist.TEST_STD), rec_tuple[1])).map(lambda t: Sample.from_ndarray(t[0], t[1]))
         
-       
+        train_data = train_data.sample(False, float(options.trainingSetSize))
         
         optimizer = Optimizer(
             model=build_model(n_input, n_hidden, n_classes),
@@ -108,11 +103,7 @@ if __name__ == "__main__":
         optimizer.set_checkpoint(EveryEpoch(), options.checkpointPath)
         trained_model = optimizer.optimize()
         parameters = trained_model.parameters()
-    elif options.action == "test":
-        # Load a pre-trained model and then validate it through top1 accuracy.
-        test_data = get_mnist(sc, "test").map(normalizer(mnist.TEST_MEAN, mnist.TEST_STD))
-        model = Model.load(options.modelPath)
-        results = model.evaluate(test_data, options.batchSize, [Top1Accuracy()])
+        results = trained_model.evaluate(test_data, options.batchSize, [Top1Accuracy()])
         for result in results:
             print(result)
     sc.stop()
