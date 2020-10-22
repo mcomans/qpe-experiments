@@ -2,16 +2,18 @@ import os
 import pandas as pd
 import subprocess
 import re
+import time
 
 USER = "am72ghiassi"
+NUM_REPLICATIONS = 2
 
-experiments = pd.read_csv("experiments.csv")
+experiments = pd.read_csv("experiments_lenet_queue.csv")
 pd.DataFrame(columns=experiments.columns)
 
 results = []
 
 with open("results.csv", "w") as f:
-    f.write("exp,replication,learning_rate,batch_size,epochs,train_size,model,accuracy\n")
+    f.write("exp,replication,learning_rate,batch_size,epochs,train_size,model,accuracy,duration \n")
 
 for index, experiment in experiments.iterrows():
     model = experiment["model"]
@@ -26,7 +28,7 @@ for index, experiment in experiments.iterrows():
 
     if model == "lenet5":
         cmd = ' '.join([f"/home/{USER}/bd/spark/bin/spark-submit", 
-            "--master", "spark://10.164.0.2:7077", 
+            "--master", "spark://10.164.0.5:7077",
             "--driver-cores", "2",
             "--driver-memory", "2G", 
             "--total-executor-cores", "4", 
@@ -40,7 +42,7 @@ for index, experiment in experiments.iterrows():
             ])
     if model == "bi-rnn":
         cmd = ' '.join([f"/home/{USER}/bd/spark/bin/spark-submit", 
-            "--master", "spark://10.164.0.2:7077", 
+            "--master", "spark://10.164.0.5:7077",
             "--driver-cores", "2",
             "--driver-memory", "2G", 
             "--total-executor-cores", "4", 
@@ -53,9 +55,14 @@ for index, experiment in experiments.iterrows():
             "--conf", f"spark.executer.extraClassPath=bigdl-SPARK_2.3-0.11.0-jar-with-dependencies.jar codes/bi-rnn.py {options_string}", 
             ])
 
-    for i in range(5):
+    for i in range(NUM_REPLICATIONS):
         print(f"Running experiment {experiment['exp']}, replication {i+1}")
+
+        start_time = time.time()
+
         result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+
+        duration = time.time() - start_time
 
         with open(f"exp{experiment['exp']}-rep{i+1}.log", "wb") as log_file:
             log_file.write(result.stdout)
@@ -67,6 +74,6 @@ for index, experiment in experiments.iterrows():
             print(f"Exception occurred in extracting accuracy, see log file exp{experiment['exp']}-rep{i+1}.log")
             accuracy = "NaN"
         with open("results.csv", "a") as f:
-            f.write(f"{experiment['exp']},{i+1},{experiment['learning_rate']},{experiment['batch_size']},{experiment['epochs']},{experiment['train_size']},{experiment['model']},{accuracy}\n")
+            f.write(f"{experiment['exp']},{i+1},{experiment['learning_rate']},{experiment['batch_size']},{experiment['epochs']},{experiment['train_size']},{experiment['model']},{accuracy}, {duration} \n")
     
 
