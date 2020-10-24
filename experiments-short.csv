@@ -1,2 +1,0 @@
-exp,learning_rate,batch_size,epochs,train_size,model
-1,0.01,4,10,0.5,lenet5
