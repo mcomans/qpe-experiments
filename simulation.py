@@ -4,7 +4,7 @@ import numpy as np
 from numpy.random import default_rng
 rng = default_rng(10)
 
-# LeNet Simulation
+ITERATIONS = 10000
 
 # Service time prediction
 predict_service_time = np.poly1d([2497.02, 65.05])
@@ -28,19 +28,23 @@ def rand_service_time(size=None):
     ts = predict_train_size_lenet(accuracy, lr)
     return predict_service_time(ts)
 
+
+s = rand_service_time(ITERATIONS)
+print(f"Mean service time: {mean(s)}\n")
+
 LAMBDA = 1.0/1300
 
 A = [rng.exponential(1.0/LAMBDA)]
 S = [A[0]]
-C = [S[0] + rand_service_time()]
+C = [S[0] + s[0]]
 response_time = [C[0] - A[0]]
 waiting_time = [S[0] - A[0]]
 
-for i in range(1, 10000):
+for i in range(1, ITERATIONS):
     A.append(A[i-1] + rng.exponential(1.0/LAMBDA))
     S.append(max(C[i-1], A[i]))
 
-    st = rand_service_time()
+    st = s[i]
     C.append(S[i] + st)
     response_time.append(C[i] - A[i])
     waiting_time.append(S[i] - A[i])
