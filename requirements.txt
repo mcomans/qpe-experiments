@@ -1,2 +1,6 @@
 pandas
 bigdl
+matplotlib
+numpy
+statsmodels
+scipy
